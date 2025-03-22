@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const pool = require('./cofig/dp');
+const pool = require('./config/dp');
 const logger = require('./logger');
 
 app.use((req, res, next) => {
