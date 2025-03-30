@@ -8,10 +8,6 @@ const port = process.env.PORT;
 
 app.use(cors());
 
-app.get('/', (req, res) => {
-    res.send('<div> Main Page </div>');
-});
-
 app.use(UserRouter);
 
 app.listen(port, () => {

@@ -1,6 +1,6 @@
 USERS:
     M1) checkUserActivity (id)
-        description: MIDDLEWARE checks if user logging session timeout
+        description: MIDDLEWARE checks if user logging session timeout; REFRESHES last_activity
         results:
             a) log: User logged out due to inactivity.
             b) log: error: Error in checkUserActivity, err
