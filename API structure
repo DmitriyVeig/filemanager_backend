@@ -1,0 +1,40 @@
+USERS:
+    M1) checkUserActivity (id)
+        description: MIDDLEWARE checks if user logging session timeout
+        results:
+            a) log: User logged out due to inactivity.
+            b) log: error: Error in checkUserActivity, err
+    1) userLogging (id) /users/:id/logging
+        description: user is logging right now, set logged to user with id = TRUE
+        results:
+            a) (404) Trying to log in user with unexpected id
+                message; id
+            b) (200) User logged in successfully
+                message; id; logged
+            c) (500) Error
+                message; error
+    2) checkUserActivity + userLogged (id) /users/:id/logged
+        description: check user logging status
+        results:
+            a) (404) Trying to check user log in status with unexpected id
+                message; id
+            b) (200) User log in status checked successfully
+                message; id; logged
+            c) (500) Error
+                message; error
+    3) users /users
+        description: get all users
+        results:
+            a) (200) Users get successfully
+                message; users
+            b) (500) Error
+                message; error
+    4) createUser (username, password) /users/create/:username/:password
+        description: create new user
+        results:
+            a) (200) User with this username already exists
+                message; username
+            b) (200) User created successfully
+                message; user
+            c) (500) Error
+                message; error
