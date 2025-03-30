@@ -1,1 +1,1 @@
-This is middle-ware for https://github.com/DmitriyVeig/filemanager.git
+This is back-end for https://github.com/DmitriyVeig/filemanager.git
