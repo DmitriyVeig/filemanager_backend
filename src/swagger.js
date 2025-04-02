@@ -14,7 +14,7 @@ const options = {
       },
     ],
   },
-  apis: ['./routes/*.js', './controllers/*.js'], // Укажите пути к вашим маршрутам и контроллерам
+  apis: ['./routes/*.js', './controllers/*.js'],
 };
 
 const specs = swaggerJsdoc(options);
