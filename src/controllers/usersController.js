@@ -1,6 +1,14 @@
 const pool = require('../db');
+const {hashPassword, comparePassword} = require("../utils/auth");
 
 const sessionTimeout = 60000;
+
+async function p_query(query, value) {
+    const { rows } = await pool.query(query, value);
+    if (rows.length === 0)
+        return null;
+    return rows;
+}
 
 exports.checkUserActivity = async (req, res, next) => {
     const userId = parseInt(req.params.id);
@@ -35,21 +43,26 @@ exports.checkUserActivity = async (req, res, next) => {
     }
 };
 
-exports.userLogging = async (req, res) => {
-    const userId = parseInt(req.params.id);
+exports.authentication = async (req, res) => {
+    const username = req.params.username.toString();
+    const password = req.params.password.toString();
     try {
-        await pool.query(
-            'UPDATE users SET logged = TRUE, last_activity = NOW() WHERE id = $1 RETURNING *',
-            [userId]
-        );
-        const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        if (rows.length === 0) {
-            console.log(`Trying to log in user with unexpected id: ${userId}`);
-            res.status(404).json({ message: 'Trying to log in user with unexpected id', id : userId });
+        const q_user = 'SELECT * FROM users WHERE username = $1';
+        const user = await p_query(q_user, [username])
+        if (!user) {
+            console.log(`Wrong username or password`);
+            res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
         }
         else {
-            console.log(`User: ${userId} logged in successfully`);
-            res.status(200).json({message: 'User logged in successfully', id : userId, logged: rows[0].logged});
+            const passwordMatch = await comparePassword(password, user.password);
+            if (!passwordMatch) {
+                console.log(`Invalid username or password {$username}`);
+                res.status(404).json({ message: 'Invalid username or password', username: username, password: password });
+            }
+            else {
+                console.log(`User: ${user.id} logged in successfully`);
+                res.status(200).json({message: 'User logged in successfully', username: user.id});
+            }
         }
     } catch (err) {
         console.error(err);
@@ -57,17 +70,26 @@ exports.userLogging = async (req, res) => {
     }
 }
 
-exports.userLogged = async (req, res) => {
-    const userId = parseInt(req.params.id);
+exports.status = async (req, res) => {
+    const username = req.params.username.toString();
+    const password = req.params.password.toString();
     try {
-        const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        if (rows.length === 0) {
-            console.log(`Trying to check user log in status with unexpected id: ${userId}`);
-            res.status(404).json({message: 'Trying to check user log in status with unexpected id', id: userId});
+        const q_user = 'SELECT * FROM users WHERE username = $1';
+        const user = await p_query(q_user, username)
+        if (!user) {
+            console.log(`Wrong username or password`);
+            res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
         }
         else {
-            console.log(`User: ${userId} log in status checked successfully`);
-            res.status(200).json({message: 'User log in status checked successfully', id: userId, logged: rows[0].logged});
+            const passwordMatch = await comparePassword(password, user.password);
+            if (!passwordMatch) {
+                console.log(`Wrong username or password`);
+                res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
+            }
+            else {
+                console.log(`User: ${user.id} status checked successfully`);
+                res.status(200).json({message: 'User status checked successfully', logged: user.logged});
+            }
         }
     } catch (err) {
         console.error(err)
@@ -77,29 +99,26 @@ exports.userLogged = async (req, res) => {
 
 exports.users = async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT * FROM public.users');
-        res.status(200).json({ message: 'Users get successfully', users: rows});
+        const q_users = 'SELECT * FROM public.users';
+        const users = await p_query(q_users)
+        res.status(200).json({ message: 'Users get successfully', users: users});
     } catch (err) {
         console.error(err)
         res.status(500).send({ message: 'Error', error: err.message });
     }
 }
 
-exports.createUser = async (req, res) => {
-    const userLogin = req.params.username.toString();
-    const userPassword = req.params.password.toString();
+exports.registration = async (req, res) => {
+    const username = req.params.username.toString();
+    const password = req.params.password.toString();
+    const h_password = await hashPassword(password);
     try {
-        const { rows } = await pool.query(
-            `INSERT INTO public.users (username, password, logged, last_activity)
-             VALUES ($1, $2, false, NOW())
-             ON CONFLICT (username) DO NOTHING
-             RETURNING *;`,
-            [userLogin, userPassword]
-        );
-        if (rows.length === 0) {
-            const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE username = $1', [userLogin]);
+        const users_q = 'INSERT INTO public.users (username, password, logged, last_activity) VALUES ($1, $2, false, NOW()) ON CONFLICT (username) DO NOTHING RETURNING *;'
+        const users = p_query(users_q, [username, h_password]);
+        if (!users) {
+            const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
             console.log(`User ${existingUser[0].id} with this username: ${existingUser[0].username} already exists`);
-            res.status(200).json({ message: 'User with this username already exists', username: existingUser[0].username });
+            res.status(200).json({ message: 'User with this username alr   eady exists', username: existingUser[0].username });
         } else {
             console.log(`User ${rows[0].id} created successfully`);
             res.status(200).json({ message: 'User created successfully', user: rows });
