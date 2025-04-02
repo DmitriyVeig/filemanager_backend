@@ -2,12 +2,13 @@
   "name": "filemanager_middleware",
   "version": "1.0.0",
   "description": "",
-  "main": "src/index.js",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/server.js"
   },
   "private": true,
   "dependencies": {
+    "@elastic/elasticsearch": "^8.17.1",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",

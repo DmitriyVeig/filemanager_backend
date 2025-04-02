@@ -3,6 +3,7 @@ const { hashPassword, comparePassword } = require("../utils/auth");
 const { generateToken } = require("../utils/jwt");
 const { sendResponse, sendErrorResponse } = require("../utils/responseHandler");
 const { logInfo, logError } = require("../utils/logger");
+const { client } = require('../utils/elasticsearch');
 
 const sessionTimeout = 60000;
 
