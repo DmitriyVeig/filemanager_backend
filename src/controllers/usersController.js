@@ -1,5 +1,8 @@
 const pool = require('../db');
-const {hashPassword, comparePassword} = require("../utils/auth");
+const { hashPassword, comparePassword } = require("../utils/auth");
+const { generateToken } = require("../utils/jwt");
+const { sendResponse, sendErrorResponse } = require("../utils/responseHandler");
+const { logInfo, logError } = require("../utils/logger");
 
 const sessionTimeout = 60000;
 
@@ -29,7 +32,7 @@ exports.checkUserActivity = async (req, res, next) => {
         const timeSinceLastActivity = now - lastActivity;
         if (timeSinceLastActivity > sessionTimeout) {
             await pool.query('UPDATE users SET logged = FALSE WHERE id = $1', [userId]);
-            console.log(`User ${userId} logged out due to inactivity.`);
+            logInfo(`User ${userId} logged out due to inactivity.`);
             return next();
         }
         await pool.query(
@@ -38,7 +41,7 @@ exports.checkUserActivity = async (req, res, next) => {
         );
         next();
     } catch (err) {
-        console.error("Error in checkUserActivity:", err);
+        logError("Error in checkUserActivity:", err);
         return next();
     }
 };
@@ -50,25 +53,24 @@ exports.authentication = async (req, res) => {
         const q_user = 'SELECT * FROM users WHERE username = $1';
         const user = await p_query(q_user, [username])
         if (!user) {
-            console.log(`Wrong username or password`);
-            res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
-        }
-        else {
-            const passwordMatch = await comparePassword(password, user.password);
+            logInfo(`Wrong username or password`);
+            sendResponse(res, 404, 'Wrong username or password', { username, password });
+        } else {
+            const passwordMatch = await comparePassword(password, user[0].password);
             if (!passwordMatch) {
-                console.log(`Invalid username or password {$username}`);
-                res.status(404).json({ message: 'Invalid username or password', username: username, password: password });
-            }
-            else {
-                console.log(`User: ${user.id} logged in successfully`);
-                res.status(200).json({message: 'User logged in successfully', username: user.id});
+                logInfo(`Invalid username or password {$username}`);
+                sendResponse(res, 404, 'Invalid username or password', { username, password });
+            } else {
+                const token = generateToken(user[0]);
+                logInfo(`User: ${user[0].id} logged in successfully`);
+                sendResponse(res, 200, 'User logged in successfully', { token });
             }
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error', error: err.message });
+        logError('Error in authentication:', err);
+        sendErrorResponse(res, 500, 'Error', err);
     }
-}
+};
 
 exports.status = async (req, res) => {
     const username = req.params.username.toString();
@@ -77,54 +79,52 @@ exports.status = async (req, res) => {
         const q_user = 'SELECT * FROM users WHERE username = $1';
         const user = await p_query(q_user, username)
         if (!user) {
-            console.log(`Wrong username or password`);
-            res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
-        }
-        else {
-            const passwordMatch = await comparePassword(password, user.password);
+            logInfo(`Wrong username or password`);
+            sendResponse(res, 404, 'Wrong username or password', { username, password });
+        } else {
+            const passwordMatch = await comparePassword(password, user[0].password);
             if (!passwordMatch) {
-                console.log(`Wrong username or password`);
-                res.status(404).json({ message: 'Wrong username or password', username: username, password: password });
-            }
-            else {
-                console.log(`User: ${user.id} status checked successfully`);
-                res.status(200).json({message: 'User status checked successfully', logged: user.logged});
+                logInfo(`Wrong username or password`);
+                sendResponse(res, 404, 'Wrong username or password', { username, password });
+            } else {
+                logInfo(`User: ${user[0].id} status checked successfully`);
+                sendResponse(res, 200, 'User status checked successfully', { logged: user[0].logged });
             }
         }
     } catch (err) {
-        console.error(err)
-        res.status(500).json({ message: 'Error', error: err.message });
+        logError('Error in status:', err);
+        sendErrorResponse(res, 500, 'Error', err);
     }
-}
+};
 
 exports.users = async (req, res) => {
     try {
         const q_users = 'SELECT * FROM public.users';
         const users = await p_query(q_users)
-        res.status(200).json({ message: 'Users get successfully', users: users});
+        sendResponse(res, 200, 'Users get successfully', { users });
     } catch (err) {
-        console.error(err)
-        res.status(500).send({ message: 'Error', error: err.message });
+        logError('Error in users:', err);
+        sendErrorResponse(res, 500, 'Error', err);
     }
-}
+};
 
 exports.registration = async (req, res) => {
     const username = req.params.username.toString();
     const password = req.params.password.toString();
     const h_password = await hashPassword(password);
     try {
-        const users_q = 'INSERT INTO public.users (username, password, logged, last_activity) VALUES ($1, $2, false, NOW()) ON CONFLICT (username) DO NOTHING RETURNING *;'
-        const users = p_query(users_q, [username, h_password]);
+        const users_q = 'INSERT INTO public.users (username, password, logged, last_activity) VALUES ($1, $2, false, NOW()) ON CONFLICT (username) DO NOTHING RETURNING *;';
+        const users = await p_query(users_q, [username, h_password]);
         if (!users) {
             const { rows: existingUser } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-            console.log(`User ${existingUser[0].id} with this username: ${existingUser[0].username} already exists`);
-            res.status(200).json({ message: 'User with this username alr   eady exists', username: existingUser[0].username });
+            logInfo(`User ${existingUser[0].id} with this username: ${existingUser[0].username} already exists`);
+            sendResponse(res, 200, 'User with this username already exists', { username: existingUser[0].username });
         } else {
-            console.log(`User ${rows[0].id} created successfully`);
-            res.status(200).json({ message: 'User created successfully', user: rows });
+            logInfo(`User ${users[0].id} created successfully`);
+            sendResponse(res, 200, 'User created successfully', { user: users });
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error', error: err.message });
+        logError('Error in registration:', err);
+        sendErrorResponse(res, 500, 'Error', err);
     }
 };
