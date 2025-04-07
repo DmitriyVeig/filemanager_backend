@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js; node src/swagger.js"
   },
   "private": true,
   "dependencies": {
@@ -17,8 +17,12 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.14.1",
     "pkill": "^2.0.0",
+    "swagger-autogen": "^2.23.7",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "@types/swagger-ui-express": "^4.1.8"
   }
 }

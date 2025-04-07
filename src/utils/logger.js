@@ -24,7 +24,11 @@ function logInfo(message) {
 }
 
 function logError(message, error) {
-    logger.error(message, { message: message, error: error }); // Добавляем сообщение и ошибку в объект
+    const logObject = { message: message };
+    if (error !== undefined) {
+        logObject.error = error;
+    }
+    logger.error(message, logObject);
 }
 
 module.exports = { logInfo, logError };

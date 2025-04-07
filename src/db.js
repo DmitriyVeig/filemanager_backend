@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const { logError } = require('./utils/logger');
 const path_env = require("path");
 require('dotenv').config({ path: path_env.resolve(__dirname, '../.env') });
 const pool = new Pool({
@@ -18,24 +19,30 @@ async function callPostgresObject(objectName, args = []) {
         const objectTypeResult = await pool.query(objectTypeQuery, [objectName]);
         const objectType = objectTypeResult.rows[0]?.prokind;
         if (!objectType) {
-            throw new Error(`Object "${objectName}" not found in PostgreSQL.`);
+            const errorMessage = `Object "${objectName}" not found in PostgreSQL.`;
+            logError(errorMessage);
         }
         let query, result;
         if (objectType === 'f') {
             const argPlaceholders = args.map((_, index) => `$${index + 1}`).join(', ');
-            query = `SELECT ${objectName}(${argPlaceholders})`;
+            query = `SELECT * FROM ${objectName}(${argPlaceholders})`; // Выбираем все столбцы
             result = await pool.query(query, args);
-            return result.rows[0][objectName];
+            if (result.rows.length > 0) {
+                return result.rows[0];
+            } else {
+                return null;
+            }
         } else if (objectType === 'p') {
             const argPlaceholders = args.map((_, index) => `$${index + 1}`).join(', ');
             query = `CALL ${objectName}(${argPlaceholders})`;
             await pool.query(query, args);
             return undefined;
         } else {
-            throw new Error(`Unsupported object type for "${objectName}".`);
+            const errorMessage = `Unsupported object type for "${objectName}".`;
+            logError(errorMessage);
         }
     } catch (error) {
-        console.error('Error calling PostgreSQL object:', error);
+        logError('Error calling PostgreSQL object:', error, error.stack);
         throw error;
     }
 }
