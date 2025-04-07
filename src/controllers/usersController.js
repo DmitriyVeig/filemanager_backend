@@ -83,7 +83,7 @@ exports.verifyToken = (req, res, next) => {
             next();
         })
         .catch(err => {
-            logInfo("Invalid token");
+            logInfo("Invalid token" + err);
             return res.sendStatus(403);
         });
 };
